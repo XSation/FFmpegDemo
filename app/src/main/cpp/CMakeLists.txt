@@ -8,7 +8,7 @@ file(GLOB sourceFile
         ./*.c ./*/*.c ./*/*/*.c
         )
 
-include_directories(ffmpeg/include ./ player)
+include_directories(ffmpeg/include/ ./ player)
 
 
 add_library(myffmpeg SHARED ${sourceFile})
@@ -29,4 +29,5 @@ target_link_libraries(myffmpeg
         swresample
         swscale
         z
+        android
         )

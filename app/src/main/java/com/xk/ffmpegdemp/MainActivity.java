@@ -2,13 +2,13 @@ package com.xk.ffmpegdemp;
 
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
+import android.util.Log;
 import android.view.SurfaceView;
 import android.view.View;
 
 import com.xk.ffmpegdemp.player.MPlayer;
 
 public class MainActivity extends AppCompatActivity {
-
 
     private SurfaceView surfaceView;
     private MPlayer mPlayer;
@@ -18,16 +18,18 @@ public class MainActivity extends AppCompatActivity {
             "rtsp://184.72.239.149/vod/mp4://BigBuckBunny_175k.mov",
             "http://tj-btfs-v2.yun.ftn.qq.com/ftn_handler/54e53ae183d30fde1d8bc1a06043272ffd53ee76f521ff71e665c2f5737c395e9d8e50a209fa403a79a7b1d5de4f883436c9c7802f92a1fd952e827a5fc45602",
             "http://tj-btfs-v2.yun.ftn.qq.com/ftn_handler/24ee9495ce368ad4f8e5c6502d1d676a2b0002ff4dd9001d68a944c6a40e2c84070fe051e962dde681e06f756d21750176c7745d230e975f524b2df7a3e0f946",
-            "rtmp://pull-g.kktv8.com/livekktv/100987038"
+            "rtmp://pull-g.kktv8.com/livekktv/100987038",
+            "http://devimages.apple.com.edgekey.net/streaming/examples/bipbop_4x3/gear2/prog_index.m3u8"
     };
     String[] cookie = {
             "",
             "FTN5K=5df86d47",
             "FTN5K=d3996990",
+            "",
             ""
     };
     //12、破冰
-    int index = 0;
+    int index = 4;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -40,18 +42,19 @@ public class MainActivity extends AppCompatActivity {
         mPlayer.setCookie(cookie[index]);
         mPlayer.setListener(new MPlayer.MPlayerListener() {
             @Override
-            public void onError() {
-
+            public void onError(int errorCode, String msg) {
+                Log.i("MainActivity", "onError-->" + errorCode + " " + msg);
             }
 
             @Override
             public void onPrepare() {
-
+                Log.i("MainActivity", "onPrepare-->");
+                mPlayer.play();
             }
 
             @Override
             public void onPlay() {
-
+                Log.i("MainActivity", "onPlay-->");
             }
         });
     }

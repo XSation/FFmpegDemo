@@ -10,9 +10,6 @@
 #include <android/log.h>
 #include <random>
 
-extern "C" {
-#include <libavformat/avformat.h>
-}
 
 #include <MPlayer.h>
 #include <macro.h>
@@ -29,11 +26,19 @@ void *task_prepare(void *args) {
     return 0;
 }
 
+void *task_start(void *args) {
+    auto *mPlayer = static_cast<MPlayer *>(args);
+    mPlayer->_start();
+    return 0;
+}
+
 MPlayer::MPlayer(const char *dataSource, const char *cookie, JavaCallHelper *pHelper) {
     this->javaCallHelper = pHelper;
-    mDataSource = new char[strlen(dataSource)];
+    //strlen获取到的是字符串不包括\0的字符长度，如果不加1，正好这块内存最后又被其他占用了，就会有问题，如果后面还是空的话也没问题
+    //strlen(dataSource) - 10测试这样也没报错，就是因为他后面都是空的，可以使用
+    mDataSource = new char[strlen(dataSource) + 1];
     strcpy(mDataSource, dataSource);
-    mCookie = new char[strlen(cookie)];
+    mCookie = new char[strlen(cookie) + 1];
     strcpy(mCookie, cookie);
 }
 
@@ -45,17 +50,14 @@ MPlayer::~MPlayer() {
 }
 
 void MPlayer::prepare() {
-
     //通过数据源，来准备一些信息，比如视频大小之类的。利用ffmpeg，可能会走网络，所以要开线程
-    pthread_create(&tid, 0, task_prepare, this);
+    pthread_create(&tid_prepare, 0, task_prepare, this);
 }
 
 void MPlayer::_prepare(bool isJNIEnvThread) {
     avformat_network_init();
-    //里面会包含视频的宽高等信息。
-    AVFormatContext *pAVFormatContext = nullptr;
     AVDictionary *codec_opts = NULL;
-    headers = new char[strlen("Cookie:") + strlen(mCookie)];
+    headers = new char[strlen("Cookie:") + strlen(mCookie) + 1];
     strcpy(headers, "Cookie:");
     strcat(headers, mCookie);
     av_dict_set(&codec_opts, "headers", headers, 0);
@@ -109,9 +111,10 @@ void MPlayer::_prepare(bool isJNIEnvThread) {
         }
         //创建Video/Audio Channel。
         if (avCodecParameters->codec_type == AVMEDIA_TYPE_VIDEO) {
-            videoChannel = new VideoChannel();
+            videoChannel = new VideoChannel(i, avCodecContext);
+            videoChannel->setRender(renderCallback);
         } else if (avCodecParameters->codec_type == AVMEDIA_TYPE_AUDIO) {
-            audioChannel = new AudioChannel();
+            audioChannel = new AudioChannel(i, avCodecContext);
         }
     }
     //有一个不存在，就抛出error
@@ -122,5 +125,48 @@ void MPlayer::_prepare(bool isJNIEnvThread) {
     }
     //准备完毕，随时可以播放了
     javaCallHelper->onPrepare(isJNIEnvThread);
+}
+
+bool playing = false;
+
+void MPlayer::start() {
+    playing = true;
+    if (videoChannel) {
+        videoChannel->avPackets.setWork(true);
+        //从AVPackets队列中读取出Packet，并且解码成AVFrame，然后渲染
+        videoChannel->play();
+    }
+    //从流中读取数据，并且添加到AVPackets中。
+    pthread_create(&tid_start, 0, task_start, this);
+}
+
+
+void MPlayer::_start() {
+    int retCode;
+    while (playing) {
+        AVPacket *avPacket = av_packet_alloc();
+        retCode = av_read_frame(pAVFormatContext, avPacket);
+        if (retCode == 0) {//success
+            if (audioChannel && avPacket->stream_index == audioChannel->index) {
+                //音频数据
+            } else if (videoChannel && avPacket->stream_index == videoChannel->index) {
+                //视频数据
+                videoChannel->avPackets.push(avPacket);
+                LOGE("push video");
+            }
+        } else if (retCode == AVERROR_EOF) {
+            //读取完成了
+            LOGE("AVERROR_EOF");
+
+        } else {//error
+            LOGE("start error");
+        }
+    }
+
+}
+
+void MPlayer::setRender(Render renderCallback) {
+    this->renderCallback = renderCallback;
+
 }
 

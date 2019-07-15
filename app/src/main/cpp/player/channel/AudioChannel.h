@@ -6,7 +6,13 @@
 #define FFMPEGDEMO_AUDIOCHANNEL_H
 
 
-class AudioChannel {
+#include "BaseChannel.h"
+
+class AudioChannel : public BaseChannel {
+public:
+    AudioChannel(int index, AVCodecContext *avCodecContext);
+
+    void play();
 
 };
 

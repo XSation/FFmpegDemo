@@ -1,6 +1,6 @@
 package com.xk.ffmpegdemp.player;
 
-import android.util.Log;
+import android.view.Surface;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 
@@ -42,6 +42,7 @@ public class MPlayer implements SurfaceHolder.Callback {
     }
 
     public void play() {
+        nstart();
     }
 
     public void release() {
@@ -56,16 +57,16 @@ public class MPlayer implements SurfaceHolder.Callback {
 
     @Override
     public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
-
+        Surface surface = holder.getSurface();
+        nsetSurface(surface);
     }
 
     @Override
     public void surfaceDestroyed(SurfaceHolder holder) {
-
     }
 
     public interface MPlayerListener {
-        void onError();
+        void onError(int errorCode, String msg);
 
         void onPrepare();
 
@@ -74,14 +75,18 @@ public class MPlayer implements SurfaceHolder.Callback {
 
 
     //↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓被native调用的方法
-    public void onError(int errorCode, String msg) {
-        Log.e("MPlayer", "onError-->code:" + errorCode + " msg:" + msg);
+    private void onError(int errorCode, String msg) {
+        mPlayerListener.onError(errorCode, msg);
     }
 
-    public void onPrepare() {
-        Log.e("MPlayer", "onPrepare-->");
+    private void onPrepare() {
+        mPlayerListener.onPrepare();
     }
 
     //↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓native方法
     native void nprepare(String dataSource, String cookie);
+
+    native void nstart();
+
+    native void nsetSurface(Surface surface);
 }

@@ -6,9 +6,33 @@
 #define FFMPEGDEMO_VIDEOCHANNEL_H
 
 
-class VideoChannel {
+#include "BaseChannel.h"
+#include <macro.h>
+
+typedef void(*Render)(uint8_t *data, int linesize, int w, int h);
+
+class VideoChannel : public BaseChannel {
 public:
-    VideoChannel();
+    VideoChannel(int index, AVCodecContext *avCodecContext);
+
+    virtual ~VideoChannel();
+
+    void play();
+
+    void _decode();
+
+    void _realPlay();
+
+    void setRender(Render renderCallback);
+
+private:
+
+    Render renderCallback;
+    bool isPlaying;
+    //解码线程
+    pthread_t tid_decode;
+    //播放线程
+    pthread_t tid_realplay;
 };
 
 
