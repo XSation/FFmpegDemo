@@ -45,7 +45,7 @@ void renderCallBack(uint8_t *data, int linesize, int w, int h) {
     }
     uint8_t *dst_data = static_cast<uint8_t *>(windowBuffer.bits);
     int dst_linesize = windowBuffer.stride * 4;
-    for (int i = 0; i < windowBuffer.height/2; ++i) {
+    for (int i = 0; i < windowBuffer.height; ++i) {
         //全部复制
         memcpy(reinterpret_cast<void *>(dst_data + i * dst_linesize), data + i * linesize,
                static_cast<size_t>(dst_linesize));

@@ -30,4 +30,5 @@ target_link_libraries(myffmpeg
         swscale
         z
         android
+        OpenSLES
         )

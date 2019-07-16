@@ -7,7 +7,7 @@
 
 #include <queue>
 #include <pthread.h>
-
+#include "macro.h"
 
 
 using std::queue;
@@ -34,7 +34,6 @@ public:
     }
 
     void push(const T new_value) {
-
         pthread_mutex_lock(&mutex);
         if (work) {
             q.push(new_value);
@@ -46,7 +45,7 @@ public:
     }
 
 
-    int pop(T* value) {
+    int pop(T *value) {
         int ret = 0;
         pthread_mutex_lock(&mutex);
         //在多核处理器下 由于竞争可能虚假唤醒 包括jdk也说明了
@@ -111,7 +110,7 @@ private:
 
     queue<T> q;
     //是否工作的标记 1 ：工作 0：不接受数据 不工作
-    int work;
+    int work = 0;
     ReleaseCallback releaseCallback;
     SyncHandle syncHandle;
 

@@ -29,7 +29,7 @@ public class MainActivity extends AppCompatActivity {
             ""
     };
     //12、破冰
-    int index = 4;
+    int index = 0;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {

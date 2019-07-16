@@ -132,10 +132,15 @@ bool playing = false;
 void MPlayer::start() {
     playing = true;
     if (videoChannel) {
-        videoChannel->avPackets.setWork(true);
         //从AVPackets队列中读取出Packet，并且解码成AVFrame，然后渲染
         videoChannel->play();
     }
+
+    if (audioChannel) {
+        //从AVPackets队列中读取出Packet，并且解码成AVFrame，然后渲染
+        audioChannel->play();
+    }
+
     //从流中读取数据，并且添加到AVPackets中。
     pthread_create(&tid_start, 0, task_start, this);
 }
@@ -149,6 +154,8 @@ void MPlayer::_start() {
         if (retCode == 0) {//success
             if (audioChannel && avPacket->stream_index == audioChannel->index) {
                 //音频数据
+                audioChannel->avPackets.push(avPacket);
+                LOGE("push audio");
             } else if (videoChannel && avPacket->stream_index == videoChannel->index) {
                 //视频数据
                 videoChannel->avPackets.push(avPacket);

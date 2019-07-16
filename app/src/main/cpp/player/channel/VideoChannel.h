@@ -19,8 +19,6 @@ public:
 
     void play();
 
-    void _decode();
-
     void _realPlay();
 
     void setRender(Render renderCallback);
@@ -28,11 +26,7 @@ public:
 private:
 
     Render renderCallback;
-    bool isPlaying;
-    //解码线程
-    pthread_t tid_decode;
-    //播放线程
-    pthread_t tid_realplay;
+
 };
 
 
