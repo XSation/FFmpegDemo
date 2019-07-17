@@ -6,13 +6,29 @@ extern "C" {
 #include <libswscale/swscale.h>
 #include <libavutil/imgutils.h>
 #include <libavutil/frame.h>
+#include <libavutil/time.h>
+
 }
 
 #include "VideoChannel.h"
 
+/**
+ * 丢已经解码的图片
+ * @param q
+ */
+void dropAvFrame(queue<AVFrame *> &q) {
+    if (!q.empty()) {
+        AVFrame *frame = q.front();
+        BaseChannel::releaseAVFrames(&frame);
+        q.pop();
+    }
+}
+VideoChannel::VideoChannel(int index, AVCodecContext *avCodecContext, AVRational rational, int fps)
+        : BaseChannel(index,
+                      avCodecContext, rational, fps) {
+    this->fps = fps;
+    avFrames.setSyncHandle(dropAvFrame);
 
-VideoChannel::VideoChannel(int index, AVCodecContext *avCodecContext) : BaseChannel(index,
-                                                                                    avCodecContext) {
 }
 
 
@@ -36,26 +52,67 @@ void VideoChannel::_realPlay() {
                                             AV_PIX_FMT_RGBA,
                                             SWS_BILINEAR,//缩放的算法，重视速度还是质量等等
                                             0, 0, 0);
-    LOGE("_realPlay1");
     //定义一个指针数组，4个长度，可以存一个颜色信息RGBA
     __uint8_t *dst_data[4];
     int linesizes[4];
     //创建一个空的图像数据：dst_data. 他是一个指针数组。4个长度，分别是RGBA。
     av_image_alloc(dst_data, linesizes, avCodecContext->width, avCodecContext->height,
                    AV_PIX_FMT_RGBA, 1);
-    LOGE("_realPlay2");
+    double frame_delays = 1.0 / fps;
 
     while (isPlaying) {
-        LOGE("_realPlay3");
 
         int ret = avFrames.pop(&avFrame);
         if (ret == 1) {
-            LOGE("_realPlay4");
 
             sws_scale(swsContext, reinterpret_cast<const uint8_t *const *>(avFrame->data),
                       avFrame->linesize, 0,
                       avCodecContext->height, dst_data, linesizes);
-            LOGE("_realPlay5");
+
+
+            //获得 当前这一个画面 播放的相对的时间
+            double clock = avFrame->best_effort_timestamp * av_q2d(time_base);
+            //额外的间隔时间
+            double extra_delay = avFrame->repeat_pict / (2 * fps);
+            // 真实需要的间隔时间
+            double delays = extra_delay + frame_delays;
+            if (!audioChannel) {
+                //休眠
+//        //视频快了
+//        av_usleep(frame_delays*1000000+x);
+//        //视频慢了
+//        av_usleep(frame_delays*1000000-x);
+                av_usleep(delays * 1000000);
+            } else {
+                if (clock == 0) {
+                    av_usleep(delays * 1000000);
+                } else {
+                    //比较音频与视频
+                    double audioClock = audioChannel->clock;
+                    //间隔 音视频相差的间隔
+                    double diff = clock - audioClock;
+                    if (diff > 0) {
+                        //大于0 表示视频比较快
+                        LOGE("视频快了：%lf", diff);
+                        av_usleep((delays + diff) * 1000000);
+                    } else if (diff < 0) {
+                        //小于0 表示音频比较快
+                        LOGE("音频快了：%lf", diff);
+                        // 视频包积压的太多了 （丢包）
+                        if (fabs(diff) >= 0.05) {
+                            releaseAVFrames(&avFrame);
+                            //丢包
+                            avFrames.sync();
+                            continue;
+                        } else {
+                            //不睡了 快点赶上 音频
+                        }
+                    }
+                }
+            }
+
+
+
             //回调出去
             renderCallback(dst_data[0],
                            linesizes[0],
@@ -71,6 +128,11 @@ void VideoChannel::_realPlay() {
 
 void VideoChannel::setRender(Render renderCallback) {
     this->renderCallback = renderCallback;
+}
+
+void VideoChannel::setAudioChannel(AudioChannel *audiochannel) {
+    this->audioChannel = audiochannel;
+
 }
 
 VideoChannel::~VideoChannel() = default;

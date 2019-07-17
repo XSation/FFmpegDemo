@@ -7,13 +7,14 @@
 
 
 #include "BaseChannel.h"
+#include "AudioChannel.h"
 #include <macro.h>
 
 typedef void(*Render)(uint8_t *data, int linesize, int w, int h);
 
 class VideoChannel : public BaseChannel {
 public:
-    VideoChannel(int index, AVCodecContext *avCodecContext);
+    VideoChannel(int index, AVCodecContext *avCodecContext, AVRational rational, int i);
 
     virtual ~VideoChannel();
 
@@ -23,9 +24,12 @@ public:
 
     void setRender(Render renderCallback);
 
-private:
+    void setAudioChannel(AudioChannel *audiochannel);
 
+private:
+    AudioChannel *audioChannel;
     Render renderCallback;
+
 
 };
 

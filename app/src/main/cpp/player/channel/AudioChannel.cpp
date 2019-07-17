@@ -21,8 +21,10 @@ void AudioChannel::play() {
     pthread_create(&tid_decode, 0, task_decode, this);
 }
 
-AudioChannel::AudioChannel(int index, AVCodecContext *avCodecContext) : BaseChannel(index,
-                                                                                    avCodecContext) {
+AudioChannel::AudioChannel(int index, AVCodecContext *avCodecContext, AVRational rational)
+        : BaseChannel(index,
+                      avCodecContext,
+                      rational, 0) {
     out_channels = av_get_channel_layout_nb_channels(AV_CH_LAYOUT_STEREO);
     out_samplesize = av_get_bytes_per_sample(AV_SAMPLE_FMT_S16);
     out_sample_rate = 44100;
@@ -162,5 +164,6 @@ int AudioChannel::getPcm() {
                               frame->nb_samples);
     //获得   samples 个   * 2 声道 * 2字节（16位）
     data_size = samples * out_samplesize * out_channels;
+    clock = frame->pts * av_q2d(time_base);
     return data_size;
 }

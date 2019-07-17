@@ -79,6 +79,7 @@ void MPlayer::_prepare(bool isJNIEnvThread) {
     for (int i = 0; i < pAVFormatContext->nb_streams; ++i) {
         //代表一个音频流、视频流、甚至字幕流
         AVStream *avStream = pAVFormatContext->streams[i];
+        AVRational time_base = avStream->time_base;
         //解码这段流的各种参数信息（宽高、码率、帧率等）
         AVCodecParameters *avCodecParameters = avStream->codecpar;
         LOGE("流类型：%s", av_get_media_type_string(avCodecParameters->codec_type));
@@ -111,10 +112,16 @@ void MPlayer::_prepare(bool isJNIEnvThread) {
         }
         //创建Video/Audio Channel。
         if (avCodecParameters->codec_type == AVMEDIA_TYPE_VIDEO) {
-            videoChannel = new VideoChannel(i, avCodecContext);
+            //帧率： 单位时间内 需要显示多少个图像
+            AVRational frame_rate = avStream->avg_frame_rate;
+            int fps = av_q2d(frame_rate);
+            videoChannel = new VideoChannel(i, avCodecContext, time_base, fps);
             videoChannel->setRender(renderCallback);
         } else if (avCodecParameters->codec_type == AVMEDIA_TYPE_AUDIO) {
-            audioChannel = new AudioChannel(i, avCodecContext);
+            audioChannel = new AudioChannel(i, avCodecContext, time_base);
+        }
+        if (videoChannel && audioChannel) {
+            videoChannel->setAudioChannel(audioChannel);
         }
     }
     //有一个不存在，就抛出error

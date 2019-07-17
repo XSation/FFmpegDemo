@@ -16,10 +16,16 @@ extern "C" {
 class BaseChannel {
 
 public:
-    BaseChannel(int index, AVCodecContext *avCodecContext) : index(index),
-                                                             avCodecContext(avCodecContext) {}
+    BaseChannel(int index, AVCodecContext *avCodecContext, AVRational rational, int fps) : index(
+            index),
+                                                                                           avCodecContext(
+                                                                                                   avCodecContext),
+                                                                                           time_base(
+                                                                                                   rational),
+                                                                                           fps(fps) {}
 
     int index;
+    double clock;
     safe_queue<AVPacket *> avPackets;
 
     safe_queue<AVFrame *> avFrames;
@@ -85,6 +91,8 @@ public:
     }
 
     AVCodecContext *avCodecContext;
+    AVRational time_base;
+    int fps;
 protected:
     //解码线程
     pthread_t tid_decode;
@@ -94,13 +102,13 @@ protected:
 
     virtual void _realPlay() = 0;
 
-    static  void *task_decode(void *args) {
+    static void *task_decode(void *args) {
         auto *videoChannel = static_cast<BaseChannel *>(args);
         videoChannel->_decode();
         return 0;
     }
 
-    static  void *task_realplay(void *args) {
+    static void *task_realplay(void *args) {
         auto *videoChannel = static_cast<BaseChannel *>(args);
         videoChannel->_realPlay();
         return 0;
